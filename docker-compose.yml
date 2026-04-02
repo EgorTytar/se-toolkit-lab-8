@@ -115,6 +115,9 @@ services:
       - NANOBOT_WEBCHAT_CONTAINER_ADDRESS=${NANOBOT_WEBCHAT_CONTAINER_ADDRESS:?'NANOBOT_WEBCHAT_CONTAINER_ADDRESS is required'}
       - NANOBOT_WEBCHAT_CONTAINER_PORT=${NANOBOT_WEBCHAT_CONTAINER_PORT:?'NANOBOT_WEBCHAT_CONTAINER_PORT is required'}
       - NANOBOT_ACCESS_KEY=${NANOBOT_ACCESS_KEY:?'NANOBOT_ACCESS_KEY is required'}
+      # Observability service URLs
+      - VICTORIALOGS_URL=http://host.docker.internal:42010
+      - VICTORIATRACES_URL=http://host.docker.internal:42011
     depends_on:
       - backend
     extra_hosts:

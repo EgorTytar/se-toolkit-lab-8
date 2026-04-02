@@ -14,7 +14,9 @@
       "Bash(tee *)",
       "Bash(git add *)",
       "Bash(pip install *)",
-      "Bash(websocat *)"
+      "Bash(websocat *)",
+      "Bash(sleep *)",
+      "Bash(python3 *)"
     ]
   },
   "$version": 3
