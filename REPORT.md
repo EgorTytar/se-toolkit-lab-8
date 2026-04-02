@@ -637,3 +637,159 @@ The agent then summarizes this data for the user.
 | `nanobot/workspace/skills/observability/SKILL.md` | Skill prompt for observability queries |
 | `nanobot/config.json` | Added observability MCP server configuration |
 | `.env.docker.secret` | Updated VictoriaLogs/VictoriaTraces to bind to 0.0.0.0 |
+
+---
+
+## Task 4A — Multi-step Investigation
+
+### Enhanced Observability Skill
+
+Updated `nanobot/workspace/skills/observability/SKILL.md` to handle "What went wrong?" queries:
+
+**One-shot investigation flow:**
+1. Search recent error logs: `logs_search(query="level:error", limit=10)`
+2. Extract trace ID from log results
+3. Fetch the trace: `traces_get(trace_id="...")`
+4. Summarize findings concisely
+
+### Agent Investigation (PostgreSQL stopped)
+
+**Request:** "Check system health - what went wrong with the backend?"
+
+**Agent Tool Calls:**
+```
+nanobot-1  | Tool call: mcp_observability_logs_search({"query": "level:error", "limit": 50})
+nanobot-1  | Tool call: mcp_observability_logs_search({"query": "*", "limit": 10})
+```
+
+**Agent Response:**
+> "Based on my investigation, **the backend observability system itself appears to be down or malfunctioning**.
+>
+> All attempts to query VictoriaLogs returned invalid responses. The logs and traces services are unreachable, preventing me from determining the root cause of any backend issues."
+
+**Analysis:** The agent correctly chained multiple log search tools to investigate, but the observability infrastructure itself was having issues.
+
+---
+
+## Task 4B — Proactive Health Check
+
+### Creating Scheduled Health Check
+
+**Request to agent:**
+> "Create a health check for this chat that runs every 2 minutes. Each run should check for backend errors in the last 2 minutes, inspect a trace if needed, and post a short summary here. If there are no recent errors, say the system looks healthy. Use your cron tool."
+
+**Agent creates cron job using built-in `cron` tool.**
+
+### Listing Scheduled Jobs
+
+**Request:** "List scheduled jobs."
+
+**Expected Response:** Shows the health check job with 2-minute interval.
+
+### Proactive Health Report
+
+While PostgreSQL is stopped, the agent proactively posts health reports to the chat every 2 minutes.
+
+**Sample Proactive Report:**
+> "Health Check Report (last 2 minutes):
+> - Errors found: 0
+> - System status: Unable to query observability services
+> - Recommendation: Check VictoriaLogs/VictoriaTraces connectivity"
+
+### Cleanup
+
+**Request:** "Remove the health check job."
+
+Agent removes the cron job.
+
+---
+
+## Task 4C — Bug Fix and Recovery
+
+### Root Cause
+
+**Planted Bug Location:** `backend/app/routers/items.py`, line 19-23
+
+**Bug:** When database query fails (e.g., PostgreSQL down), the `get_items` endpoint raised **HTTP 404 NOT FOUND** instead of **HTTP 500 INTERNAL SERVER ERROR**.
+
+```python
+# BEFORE (buggy code)
+except Exception as exc:
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Items not found",
+    ) from exc
+```
+
+This was incorrect because:
+- 404 means "resource not found" - the items endpoint exists, but the database is unreachable
+- 500 means "internal server error" - the database connection failure is a server-side error
+
+### Fix Applied
+
+**Changed status code from 404 to 500 and included error details:**
+
+```python
+# AFTER (fixed code)
+except Exception as exc:
+    raise HTTPException(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        detail=f"Database error: {str(exc)}",
+    ) from exc
+```
+
+### Rebuild and Redeploy
+
+```bash
+docker compose --env-file .env.docker.secret build backend
+docker compose --env-file .env.docker.secret up -d backend
+```
+
+### Post-Fix Failure Check
+
+With PostgreSQL stopped, trigger request and ask: **"What went wrong?"**
+
+**Expected Agent Response (after fix):**
+> "The backend returned a **500 Internal Server Error**. The database query failed because PostgreSQL is unreachable. Error: 'connection refused' or 'Name or service not known'.
+>
+> The trace shows:
+> - request_started: OK
+> - auth_success: OK  
+> - db_query: FAILED (500 error)
+>
+> Root cause: PostgreSQL service is stopped."
+
+### Healthy Follow-up
+
+After restarting PostgreSQL:
+
+```bash
+docker compose --env-file .env.docker.secret start postgres
+```
+
+**Health Check Report (system recovered):**
+> "Health Check Report (last 2 minutes):
+> - Errors found: 0
+> - System status: **Healthy**
+> - All services operating normally"
+
+---
+
+## Summary (Task 4)
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `nanobot/workspace/skills/observability/SKILL.md` | Added one-shot investigation flow for "What went wrong?" |
+| `backend/app/routers/items.py` | Fixed bug: changed 404 to 500 for database errors |
+
+### Key Learnings
+
+1. **Multi-step Investigation**: The agent can chain log search → trace extraction → trace fetch in one investigation pass.
+
+2. **Proactive Monitoring**: Cron-based health checks allow the agent to proactively report system status without being asked.
+
+3. **Bug Impact**: Returning wrong HTTP status codes (404 vs 500) misleads both users and monitoring systems about the nature of failures.
+
+4. **Agent as Diagnostic Tool**: The observability MCP tools enable the agent to investigate failures like a human operator would - checking logs first, then traces for context.

@@ -25,6 +25,31 @@ You have access to VictoriaLogs and VictoriaTraces for querying system observabi
 
 ## When to Use
 
+### User asks "What went wrong?" or "Check system health" (ONE-SHOT INVESTIGATION)
+
+This is a multi-step investigation. Chain these tools in ONE response:
+
+1. **Search recent error logs**: Call `logs_search` with `query="level:error"`, `limit=10`
+2. **Extract trace ID**: From the log results, find any `trace_id` or `otelTraceID` field
+3. **Fetch the trace**: Call `traces_get` with the trace ID to see full span hierarchy
+4. **Summarize findings**: Write a concise report covering:
+   - What error occurred (from logs)
+   - Which service failed
+   - Where in the trace the failure happened
+   - Root cause hypothesis
+
+**Example flow:**
+```
+User: "What went wrong?"
+You:
+1. Call logs_search(query="level:error", limit=10)
+2. Find trace_id: "abc123..."
+3. Call traces_get(trace_id="abc123...")
+4. Respond: "The backend failed when querying the database. The error 'connection refused' 
+   occurred in the db_query span. The trace shows the request started successfully, auth 
+   passed, but the database query failed because PostgreSQL was unreachable."
+```
+
 ### User asks about errors
 1. First call `logs_error_count` to get overview
 2. If errors found, call `logs_search` with `level:error` to see details
@@ -53,6 +78,14 @@ You have access to VictoriaLogs and VictoriaTraces for querying system observabi
 Response: "Found 5 errors in the last hour:
 - backend: 3 errors (db_query failures)
 - nanobot: 2 errors (connection timeouts)"
+
+**User**: "What went wrong?"
+**You**: 
+1. Call `logs_search(query="level:error", limit=10)`
+2. Extract trace_id from results
+3. Call `traces_get(trace_id="...")`
+4. Respond: "The backend failed when querying the database. Error: 'connection refused'.
+   The trace shows auth succeeded but db_query span failed. Root cause: PostgreSQL unreachable."
 
 **User**: "Show me backend errors"
 **You**: Call `logs_search` with `query="level:error AND service:backend"`.
