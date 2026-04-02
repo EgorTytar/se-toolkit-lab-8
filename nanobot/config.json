@@ -1,0 +1,60 @@
+{
+  "agents": {
+    "defaults": {
+      "workspace": "./workspace",
+      "model": "coder-model",
+      "provider": "custom",
+      "maxTokens": 8192,
+      "contextWindowTokens": 65536,
+      "temperature": 0.1,
+      "maxToolIterations": 40,
+      "reasoningEffort": null,
+      "timezone": "UTC",
+      "instruction": "CRITICAL RULE: When asked about scores, pass rates, performance, timeline, groups, or completion rate WITHOUT a lab specified, you MUST ask 'Which lab would you like to see?' and list available labs. DO NOT show any scores until the user specifies a lab. Exception: Only show all labs when explicitly asked to compare (e.g., 'which lab has the lowest')."
+    }
+  },
+  "channels": {
+    "sendProgress": true,
+    "sendToolHints": false,
+    "sendMaxRetries": 3
+  },
+  "providers": {
+    "custom": {
+      "apiKey": "local-proxy-key",
+      "apiBase": "http://localhost:42005/v1",
+      "extraHeaders": null
+    }
+  },
+  "tools": {
+    "web": {
+      "proxy": null,
+      "search": {
+        "provider": "brave",
+        "apiKey": "",
+        "baseUrl": "",
+        "maxResults": 5
+      }
+    },
+    "exec": {
+      "enable": true,
+      "timeout": 60,
+      "pathAppend": ""
+    },
+    "restrictToWorkspace": false,
+    "mcpServers": {
+      "lms": {
+        "type": null,
+        "command": "python3",
+        "args": ["-m", "mcp_lms"],
+        "env": {
+          "NANOBOT_LMS_BACKEND_URL": "http://localhost:42002",
+          "NANOBOT_LMS_API_KEY": "key"
+        },
+        "url": "",
+        "headers": {},
+        "toolTimeout": 30,
+        "enabledTools": ["*"]
+      }
+    }
+  }
+}
