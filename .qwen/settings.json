@@ -12,7 +12,9 @@
       "Bash(rm *)",
       "Bash(uv *)",
       "Bash(tee *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(pip install *)",
+      "Bash(websocat *)"
     ]
   },
   "$version": 3

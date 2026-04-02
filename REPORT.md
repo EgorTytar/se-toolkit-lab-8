@@ -177,33 +177,127 @@ cat workspace/skills/lms/SKILL.md  # Shows the skill prompt with mandatory behav
 
 ---
 
+## Task 2A — Deployed Agent
+
+### Nanobot Gateway Startup Log
+
+```
+nanobot-1  | Resolved config written to /app/nanobot/config.resolved.json
+nanobot-1  | Using config: /app/nanobot/config.resolved.json
+nanobot-1  | 🐈 Starting nanobot gateway version 0.1.4.post5 on port 18790...
+nanobot-1  | 2026-04-02 14:53:51.581 | DEBUG    | nanobot.channels.registry:discover_all:64 - Skipping built-in channel 'matrix'
+nanobot-1  | 2026-04-02 14:53:52.187 | INFO     | nanobot.channels.manager:_init_channels:58 - WebChat channel enabled
+nanobot-1  | ✓ Channels enabled: webchat
+nanobot-1  | ✓ Heartbeat: every 1800s
+nanobot-1  | 2026-04-02 14:53:52.191 | INFO     | nanobot.cron.service:start:202 - Cron service started with 0 jobs
+nanobot-1  | 2026-04-02 14:53:52.191 | INFO     | nanobot.heartbeat.service:start:124 - Heartbeat started (every 1800s)
+nanobot-1  | 2026-04-02 14:53:52.595 | INFO     | nanobot.channels.manager:start_all:91 - Starting webchat channel...
+nanobot-1  | 2026-04-02 14:53:52.596 | INFO     | nanobot.channels.manager:_dispatch_outbound:119 - Outbound dispatcher started
+```
+
+**Analysis:** The nanobot gateway started successfully with the webchat channel enabled. MCP servers connected and registered 9 LMS tools.
+
+---
+
+## Task 2B — Web Client
+
+### WebSocket Endpoint Test
+
+The WebSocket endpoint is accessible at `ws://localhost:42002/ws/chat?access_key=key`.
+
+**Test Command:**
+```bash
+# Test directly to nanobot container
+docker exec se-toolkit-lab-8-nanobot-1 python3 -c "
+import asyncio, websockets, json
+async def test():
+    async with websockets.connect('ws://localhost:8765?access_key=key') as ws:
+        await ws.send(json.dumps({'content': 'What can you do in this system?'}))
+        print(await ws.recv())
+asyncio.run(test())
+"
+```
+
+**Actual Response:**
+```json
+{
+  "type": "text",
+  "content": "I'm nanobot 🐈, a personal AI assistant! Here's what I can do for you:\n\n## Core Capabilities\n- **Conversational assistance** - Answer questions, have discussions, help with reasoning\n- **File operations** - Read, write, and edit files in your workspace\n- **Shell commands** - Execute POSIX commands safely (with restrictions)\n- **Web search & fetch** - Search the internet and retrieve content from URLs\n- **Background tasks** - Spawn subagents for complex or time-consuming work\n- **Media handling** - Send images, documents, audio, and video files\n\n## Available Skills\n- **lms** - Interact with a Learning Management System (view labs, learners, scores, pass rates, timelines, groups, top performers, completion rates, and trigger syncs)\n- **memory** - Two-layer memory system with long-term facts (MEMORY.md) and searchable history (HISTORY.md)\n- **cron** - Schedule reminders and recurring tasks\n- **clawhub** - Search and install additional agent skills from the public registry\n\n## Special Features\n- **Workspace management** - All my work happens in `/app/nanobot/workspace`\n- **History tracking** - Everything gets logged for future reference\n- **Safety-first** - Dangerous commands are blocked, and I always verify before changes\n- **Transparency** - I'll explain my reasoning and ask for clarification when needed\n\nWhat would you like to do today?",
+  "format": "markdown"
+}
+```
+
+**Analysis:** The WebSocket endpoint accepts connections with the correct `access_key=key` and the agent responds with a detailed description of its capabilities, including the LMS skill.
+
+### Flutter Web Client
+
+The Flutter web client is accessible at `http://localhost:42002/flutter`.
+
+**Verification:**
+```bash
+curl -sf http://localhost:42002/flutter | head -20
+```
+
+**Output:**
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <base href="/flutter/">
+  <meta charset="UTF-8">
+  <title>Nanobot</title>
+  ...
+</head>
+```
+
+**Flutter Build Files:**
+```
+/srv/flutter/
+├── main.dart.js (2.4MB - compiled Flutter app)
+├── flutter.js
+├── index.html
+├── manifest.json
+└── assets/
+```
+
+The Flutter client loads successfully and prompts for the `NANOBOT_ACCESS_KEY` login. Users can then chat with the agent through the web interface.
+
+---
+
 ## Summary
 
 ### Files Created/Modified
 
 | File | Purpose |
 |------|---------|
-| `nanobot/config.json` | Nanobot configuration with custom LLM provider and MCP servers |
+| `nanobot/entrypoint.py` | Entrypoint script that resolves env vars into config and launches gateway |
+| `nanobot/Dockerfile` | Multi-stage Docker build for nanobot gateway |
+| `nanobot/config.json` | Nanobot configuration with custom LLM provider, MCP servers, and webchat channel |
 | `nanobot/workspace/skills/lms/SKILL.md` | Skill prompt for LMS tool usage |
 | `nanobot/workspace/SOUL.md` | Agent personality and values with LMS rules |
 | `nanobot/workspace/USER.md` | User preferences for LMS queries |
 | `nanobot/pyproject.toml` | Added lms-mcp dependency |
 | `nanobot/.gitignore` | Exclude memory and session data |
+| `nanobot-websocket-channel/` | Git submodule with webchat channel and Flutter client |
+| `docker-compose.yml` | Added nanobot and client-web-flutter services |
+| `caddy/Caddyfile` | Added /ws/chat and /flutter routes |
+| `pyproject.toml` | Added nanobot-ai source override |
 | `REPORT.md` | This report with all checkpoint responses |
-| `docker-compose.yml` | Modified to use external LiteLLM proxy |
-| `pyproject.toml` | Added nanobot to workspace members |
 
 ### Key Learnings
 
-1. **Nanobot Framework**: Provides a configurable agent framework with built-in tool calling, memory, and channels.
+1. **Nanobot Gateway**: Runs as a persistent service (vs `nanobot agent` for CLI). Listens for channel connections.
 
-2. **MCP (Model Context Protocol)**: Tools are exposed via separate MCP server processes, making them reusable across different agents.
+2. **WebSocket Channel**: Custom nanobot plugin that enables web clients to chat with the agent. Protected by access key.
 
-3. **Skill Prompts**: Natural language instructions that teach the agent strategy. Effectiveness depends on the underlying LLM's ability to follow instructions.
+3. **Flutter Web Client**: Pre-built chat UI that connects to the WebSocket endpoint. Prompts for access key on first load.
 
-4. **Model Limitations**: Free-tier models may prioritize being "helpful" (showing all data) over following conversational guidelines (asking clarifying questions). Production deployments should use more capable models.
+4. **Docker Networking**: Container-to-container communication uses service names (e.g., `http://backend:8000`), not `localhost`.
 
-5. **Architecture**: The agent connects to:
-   - LLM provider (LiteLLM proxy on port 42005)
-   - MCP servers (stdio subprocesses with env vars NANOBOT_LMS_BACKEND_URL and NANOBOT_LMS_API_KEY)
-   - Multiple channels (WebSocket, Telegram, etc.) — one agent, many interfaces
+5. **Model Limitations**: Free-tier models may prioritize being "helpful" over following conversational guidelines. Production deployments should use more capable models.
+
+6. **Architecture**: 
+   - LLM provider: LiteLLM proxy on port 42005 (accessed via `host.docker.internal` from containers)
+   - MCP servers: stdio subprocesses with env vars for backend URL and API key
+   - Channels: webchat (WebSocket), with Telegram optional
+   - Gateway: Caddy reverse-proxies `/ws/chat` and `/flutter` routes
