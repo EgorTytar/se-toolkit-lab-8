@@ -62,12 +62,23 @@ def main():
     # Resolve MCP server environment variables
     backend_url = os.environ.get("NANOBOT_LMS_BACKEND_URL", "")
     backend_api_key = os.environ.get("NANOBOT_LMS_API_KEY", "")
+    
+    # Observability service URLs
+    victorialogs_url = os.environ.get("VICTORIALOGS_URL", "")
+    victoriatraces_url = os.environ.get("VICTORIATRACES_URL", "")
 
     if "mcpServers" in config.get("tools", {}):
         if backend_url:
             config["tools"]["mcpServers"]["lms"]["env"]["NANOBOT_LMS_BACKEND_URL"] = backend_url
         if backend_api_key:
             config["tools"]["mcpServers"]["lms"]["env"]["NANOBOT_LMS_API_KEY"] = backend_api_key
+        
+        # Update observability MCP server env vars
+        if "observability" in config["tools"]["mcpServers"]:
+            if victorialogs_url:
+                config["tools"]["mcpServers"]["observability"]["env"]["VICTORIALOGS_URL"] = victorialogs_url
+            if victoriatraces_url:
+                config["tools"]["mcpServers"]["observability"]["env"]["VICTORIATRACES_URL"] = victoriatraces_url
 
     # Write resolved config
     with open(resolved_path, "w") as f:

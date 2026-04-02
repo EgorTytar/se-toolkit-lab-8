@@ -58,6 +58,19 @@
         "headers": {},
         "toolTimeout": 30,
         "enabledTools": ["*"]
+      },
+      "observability": {
+        "type": null,
+        "command": "python3",
+        "args": ["-m", "mcp_lms", "observability"],
+        "env": {
+          "VICTORIALOGS_URL": "http://host.docker.internal:42010",
+          "VICTORIATRACES_URL": "http://host.docker.internal:42011"
+        },
+        "url": "",
+        "headers": {},
+        "toolTimeout": 30,
+        "enabledTools": ["*"]
       }
     }
   }
