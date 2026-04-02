@@ -1,0 +1,13 @@
+# Nanobot memory and session data
+memory/HISTORY.md
+memory/MEMORY.md
+sessions/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# IDE
+.vscode/
+.idea/

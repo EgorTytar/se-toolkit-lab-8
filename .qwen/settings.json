@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl *)",
+      "Bash(test *)",
+      "Bash(docker compose *)",
+      "Bash(docker ps *)",
+      "Bash(docker exec *)",
+      "Bash(docker stop *)",
+      "Bash(true)",
+      "Bash(git submodule *)",
+      "Bash(rm *)",
+      "Bash(uv *)",
+      "Bash(tee *)",
+      "Bash(git add *)"
+    ]
+  },
+  "$version": 3
+}

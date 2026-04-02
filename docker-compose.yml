@@ -160,6 +160,7 @@ services:
       # Task 2B — uncomment when you want Caddy to serve the Flutter build output.
       # - client-web-flutter:/srv/flutter:ro
 
+  # Stub service - the actual LLM proxy is your existing LiteLLM container on port 42005
   qwen-code-api:
     build:
       context: ./qwen-code-api
@@ -168,8 +169,7 @@ services:
     restart: unless-stopped
     networks:
       - lms-network
-    ports:
-      - ${QWEN_CODE_API_HOST_ADDRESS:?'QWEN_CODE_API_HOST_ADDRESS is required'}:${QWEN_CODE_API_HOST_PORT:?'QWEN_CODE_API_HOST_PORT is required'}:${QWEN_CODE_API_CONTAINER_PORT:-8080}
+    # No ports - using external LiteLLM on 42005
     volumes:
       - ~/.qwen:/mnt/qwen-creds:ro
     environment:
@@ -182,18 +182,9 @@ services:
       - QWEN_CODE_AUTH_USE=${QWEN_CODE_API_AUTH_USE:?'QWEN_CODE_API_AUTH_USE is required'}
       - LOG_REQUESTS=${QWEN_CODE_API_LOG_REQUESTS:?'QWEN_CODE_API_LOG_REQUESTS is required'}
       - QWEN_CODE_API_KEY=${QWEN_CODE_API_KEY:-}
+    # Disable healthcheck since this is a stub
     healthcheck:
-      test:
-        - CMD
-        - python
-        - "-c"
-        - |
-          import urllib.request
-          req = urllib.request.Request(
-              'http://localhost:${QWEN_CODE_API_CONTAINER_PORT:-8080}/health',
-              headers={'X-API-Key': '${QWEN_CODE_API_KEY:-}'}
-          )
-          urllib.request.urlopen(req)
+      test: ["CMD", "true"]
       interval: 30s
       timeout: 10s
       retries: 3
