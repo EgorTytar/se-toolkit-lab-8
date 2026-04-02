@@ -8,3 +8,6 @@ dependencies = [
     "lms-mcp",
     "nanobot-ai>=0.1.4.post6",
 ]
+
+[tool.uv.sources]
+lms-mcp = { workspace = true }
